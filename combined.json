@@ -1,0 +1,16 @@
+[
+    {
+        "command": "hello",
+        "values": {
+            "s": -123.4,
+            "d": 45
+        }
+    },
+    {
+        "command": "hello",
+        "values": {
+            "s": -123.4,
+            "d": 45
+        }
+    }
+]
