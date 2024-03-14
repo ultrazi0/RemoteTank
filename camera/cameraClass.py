@@ -23,7 +23,7 @@ class Camera:
         self.closed = Event()
 
     def capture_and_show(self):
-        self.cap = cv.VideoCapture(self.camera_id, cv.CAP_DSHOW)
+        self.cap = cv.VideoCapture(self.camera_id, cv.CAP_DSHOW)  # CAP_DSHOW works only for windows - on linux causes problems
         self.cap.set(3, self.width)
         self.cap.set(4, self.height)
 
@@ -69,7 +69,7 @@ class Camera:
         print(f"Camera>>> Capture on Camera {self.camera_id}: Running in process {getpid()}", flush=True)
 
         # Initialize capture object
-        self.cap = cv.VideoCapture(self.camera_id, cv.CAP_DSHOW)
+        self.cap = cv.VideoCapture(self.camera_id)
         self.cap.set(3, self.width)
         self.cap.set(4, self.height)
 
@@ -78,7 +78,7 @@ class Camera:
                 # Read the image
                 success, img = self.cap.read()
                 if not success:
-                    print('Camera>>> Failed to get a frame...')
+                    print(f'Camera({getpid()})>>> Failed to get a frame...')
                     break
 
                 # Create an array with the same properties as the image
@@ -89,11 +89,11 @@ class Camera:
 
                 cv.waitKey(1)
         except KeyboardInterrupt:
-            print('Camera>>> Capture: Closing', flush=True)
+            print(f'Camera({getpid()})>>> Capture: Closing', flush=True)
         finally:
             self.image_memory.close()
             self.cap.release()
-            print('Camera>>> Sender: Done', flush=True)
+            print(f'Camera({getpid()})>>> Sender: Done', flush=True)
 
     def show(self):
         """ Open show window to read from SharedMemory. Designed to be run as a process """
@@ -113,16 +113,18 @@ class Camera:
                     raise KeyboardInterrupt
                 if k % 256 == ord(' '):
                     print(img.size)
+                if k % 256 == ord('p'):
+                    print(img)
 
                 if self.closed.is_set():
                     print('Camera>>> Receiver: Heard that must be closed...', flush=True)
                     break
         except KeyboardInterrupt:
-            print('Camera>>> Receiver: Closing...', flush=True)
+            print(f'Camera({getpid()})>>> Receiver: Closing...', flush=True)
         finally:
             self.closed.set()
 
             self.image_memory.close()
 
             cv.destroyWindow(self.window_name)
-            print('Camera>>> Receiver: Done', flush=True)
+            print(f'Camera({getpid()})>>> Receiver: Done', flush=True)
