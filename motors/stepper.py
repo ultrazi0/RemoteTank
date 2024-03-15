@@ -1,37 +1,37 @@
 import RPi.GPIO as GPIO
 from time import sleep
 from configparser import ConfigParser
-from math_part import angle_turret, set_angle_between_borders
-
-halfstepping = [
-    [1, 0, 0, 0],
-    [1, 1, 0, 0],
-    [0, 1, 0, 0],
-    [0, 1, 1, 0],
-    [0, 0, 1, 0],
-    [0, 0, 1, 1],
-    [1, 0, 0, 1],
-    [1, 0, 0, 1]
-]
-
-fullstepping_power = [
-    [1, 1, 0, 0],
-    [0, 1, 1, 0],
-    [0, 0, 1, 1],
-    [1, 0, 0, 1]
-]
-
-fullstepping_light = [
-    [1, 0, 0, 0],
-    [0, 1, 0, 0],
-    [0, 0, 1, 0],
-    [0, 0, 0, 1]
-]
 
 
 class Stepper:
+    halfstepping = [
+        [1, 0, 0, 0],
+        [1, 1, 0, 0],
+        [0, 1, 0, 0],
+        [0, 1, 1, 0],
+        [0, 0, 1, 0],
+        [0, 0, 1, 1],
+        [1, 0, 0, 1],
+        [1, 0, 0, 1]
+    ]
+
+    fullstepping_power = [
+        [1, 1, 0, 0],
+        [0, 1, 1, 0],
+        [0, 0, 1, 1],
+        [1, 0, 0, 1]
+    ]
+
+    fullstepping_light = [
+        [1, 0, 0, 0],
+        [0, 1, 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1]
+    ]
+
     def __init__(self, in1, in2, in3, in4, initial_angle=0., initial_step=0, upper_border=None, lower_border=None,
-                 gear_ratio=(63+277/405), number_of_teeth=32, config=None, config_file=None) -> None:
+                 gear_ratio=(63+277/405), number_of_teeth=32, config=None, config_file=None,
+                 number_of_teeth_stepper=None, number_of_teeth_turret=None) -> None:
 
         if (upper_border is not None) and (initial_angle > upper_border) and not config:
             raise ValueError("Initial angle cannot be greater than the upper border")
@@ -56,17 +56,19 @@ class Stepper:
         self.config_file = config_file
         self.time_of_the_last_turn = -1
         self.turret_angle = float(config['values']['turret angle']) if (config is not None) else None
+        self.number_of_teeth_stepper = number_of_teeth_stepper
+        self.number_of_teeth_turret = number_of_teeth_turret
 
     # Rotates stepper by a specified amount of steps
     def rotate(self, steps, method=None, delay=0.001, turn_coefficient=1):
         if method is None:
-            method = fullstepping_power
+            method = self.fullstepping_power
         steps = round(steps * turn_coefficient)
 
         # Method choosing -- two available
-        if method == halfstepping:
+        if method == self.halfstepping:
             d_angle = 360 / (self.gear_ratio * self.number_of_teeth * 2)
-        elif (method == fullstepping_power) or (method == fullstepping_light):
+        elif (method == self.fullstepping_power) or (method == self.fullstepping_light):
             d_angle = 360 / (self.gear_ratio * self.number_of_teeth)
         else:
             # If another method chosen
@@ -80,7 +82,7 @@ class Stepper:
 
                 # Cannon angle after turning by 1 step -- IF config is given
                 if self.turret_angle is not None:
-                    new_turret_angle = self.turret_angle + 1 / angle_turret(1 / d_angle, config=self.config)
+                    new_turret_angle = self.turret_angle + 1 / self.angle_turret(1 / d_angle)
 
                 # Take borders into account, only upper border because here it is turning right
                 if self.upper_border is not None:
@@ -116,7 +118,7 @@ class Stepper:
 
                 # Cannon angle after turning by 1 step -- IF config is given
                 if self.turret_angle is not None:
-                    new_turret_angle = self.turret_angle - 1 / angle_turret(1 / d_angle, config=self.config)
+                    new_turret_angle = self.turret_angle - 1 / self.angle_turret(1 / d_angle)
 
                 # Take borders into account
                 if self.lower_border is not None:
@@ -150,9 +152,9 @@ class Stepper:
         for pin in range(len(self.pins)):
             GPIO.output(self.pins[pin], 0)
 
-        self.angle = set_angle_between_borders(self.angle)  # Set the angle between -180 and 180
+        self.angle = self.set_angle_between_borders(self.angle)  # Set the angle between -180 and 180
         if self.turret_angle is not None:  # Set turret angle between -180 and 180
-            self.turret_angle = set_angle_between_borders(self.turret_angle)
+            self.turret_angle = self.set_angle_between_borders(self.turret_angle)
 
         # Write down the values to config
         if self.config is not None:
@@ -164,28 +166,57 @@ class Stepper:
                 self.config.write(cfg_file)
 
     # Turn stepper to a specified angle
-    def turn_to(self, angle, delay=0.002, method=fullstepping_light):
+    def turn_to(self, angle, delay=0.002, method=None):
+        if method is None:
+            method = self.fullstepping_light
+
         turn_angle = angle - self.angle  # The angle by which the stepper should be rotated
 
         # Calculate the needed amount of steps
-        if method == halfstepping:
+        if method == self.halfstepping:
             amount_of_steps = turn_angle * (self.gear_ratio * self.number_of_teeth * 2) / 360  # For halfstepping
-        elif (method == fullstepping_power) or (method == fullstepping_light):
+        elif (method == self.fullstepping_power) or (method == self.fullstepping_light):
             amount_of_steps = turn_angle * (self.gear_ratio * self.number_of_teeth) / 360  # For fullstepping
+        else:
+            raise TypeError("Stepper>>> Provided method not supported")
 
         # Rotate by that amount of steps
         self.rotate(round(amount_of_steps), method=method, delay=delay)
 
     # Turn stepper by a specified angle
-    def turn_by(self, angle, delay=0.002, method=fullstepping_light):
+    def turn_by(self, angle, delay=0.002, method=None):
+        if method is None:
+            method = self.fullstepping_light
+
         # Calculate the needed amount of steps
-        if method == halfstepping:
+        if method == self.halfstepping:
             amount_of_steps = angle * (self.gear_ratio * self.number_of_teeth * 2) / 360  # For halfstepping
-        elif (method == fullstepping_power) or (method == fullstepping_light):
+        elif (method == self.fullstepping_power) or (method == self.fullstepping_light):
             amount_of_steps = angle * (self.gear_ratio * self.number_of_teeth) / 360  # For fullstepping
+        else:
+            raise TypeError("Stepper>>> Provided method not supported")
 
         # Rotate
         self.rotate(round(amount_of_steps), method=method, delay=delay)
+
+    def angle_turret(self, turret_angle):
+        """
+        Calculates the stepper angle needed to turn the turret by turret_angle
+
+        ---Numbers of teeth can be either directly specified or read from the config file---
+        """
+
+        if (self.number_of_teeth_turret is None) or (self.number_of_teeth_stepper is None):
+            raise ValueError(
+                'Parameters number_of_teeth_stepper and number_of_teeth_turret have not been provided')
+
+        return turret_angle * self.number_of_teeth_turret / self.number_of_teeth_stepper
+
+    @staticmethod
+    def set_angle_between_borders(angle):
+        """Sets the angle between -180 and 180"""
+        amount_of_semicircles = angle // 180
+        return angle - 180 * (amount_of_semicircles + amount_of_semicircles % 2)
 
 
 if __name__ == "__main__":

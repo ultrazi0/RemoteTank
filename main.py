@@ -8,7 +8,7 @@ if __name__ == "__main__":
     from camera import Camera
     from sock import ImageWebsocket, CommandWebsocket, FeedbackWebsocket
 
-    from motors import Motor_PWM
+    from motors import Motor_PWM, Servo, Stepper
 
     host = "192.168.2.160"
 
@@ -26,11 +26,19 @@ if __name__ == "__main__":
     m1 = Motor_PWM(21, 19, 'l', min_speed=20, min_activation_speed=20)
     m2 = Motor_PWM(8, 10, 'r', min_speed=20, min_activation_speed=20)
 
+    servo = Servo(24, lower_border=None, upper_border=None, dy=3.5, r=7.5, start_angle=52, initial_angle=0)
+
+    stepper = Stepper(11, 13, 15, 16, number_of_teeth_stepper=12, number_of_teeth_turret=134)
+
 
     def my_move(speed, turn):
         print(f"Main>>> I have been moved with the speed {speed} in direction {turn}")
         m1.move(speed, turn)
         m2.move(speed, turn)
+    
+    def turret(tilt, turn):
+        servo.rotate_by(tilt, turn_coefficient=10)
+        stepper.rotate(turn, turn_coefficient=100, delay=0.002)
 
     def my_shoot():
         print(">>> Yes, Sir! Shooting!")
@@ -43,6 +51,7 @@ if __name__ == "__main__":
 
     commands = {
         "MOVE": my_move,
+        "TURRET": turret,
         "SHOOT": my_shoot,
         "STOP": stop
     }
