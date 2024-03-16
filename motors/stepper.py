@@ -1,6 +1,5 @@
 import RPi.GPIO as GPIO
 from time import sleep
-from configparser import ConfigParser
 
 
 class Stepper:
@@ -29,9 +28,9 @@ class Stepper:
         [0, 0, 0, 1]
     ]
 
-    def __init__(self, in1, in2, in3, in4, initial_angle=0., initial_step=0, upper_border=None, lower_border=None,
-                 gear_ratio=(63+277/405), number_of_teeth=32, config=None, config_file=None,
-                 number_of_teeth_stepper=None, number_of_teeth_turret=None) -> None:
+    def __init__(self, in1, in2, in3, in4, initial_angle=0., initial_step=0, initial_turret_angle=0.,
+                 upper_border=None, lower_border=None, gear_ratio=(63+277/405), number_of_teeth=32,
+                 number_of_teeth_stepper=None, number_of_teeth_turret=None, config=None) -> None:
 
         if (upper_border is not None) and (initial_angle > upper_border) and not config:
             raise ValueError("Initial angle cannot be greater than the upper border")
@@ -44,23 +43,30 @@ class Stepper:
             GPIO.setup(pin, GPIO.OUT)
             GPIO.output(pin, 0)
 
-        self.initial_angle = initial_angle  # not used
-        self.angle = initial_angle  # current angle
+        if config is not None:
+            self.angle = config.ROBOT_DATA.angle_stepper  # current angle on the motor
+            self.step = config.ROBOT_DATA.step  # current step
+            self.gear_ratio = config.CONSTANTS.gear_ratio  # Characteristic of a motor
+            self.number_of_teeth = config.CONSTANTS.number_of_teeth  # teeth INSIDE the stepper motor
+            self.turret_angle = config.ROBOT_DATA.turret_angle
+            self.number_of_teeth_stepper = config.CONSTANTS.number_of_teeth_stepper
+            self.number_of_teeth_turret = config.CONSTANTS.number_of_teeth_turret
+        else:
+            self.angle = initial_angle  # current angle on the motor
+            self.step = initial_step  # current step
+            self.gear_ratio = gear_ratio  # Characteristic of a motor
+            self.number_of_teeth = number_of_teeth  # teeth INSIDE the stepper motor \ characteristic of a motor
+            self.turret_angle = initial_turret_angle
+            self.number_of_teeth_stepper = number_of_teeth_stepper
+            self.number_of_teeth_turret = number_of_teeth_turret
+
         self.upper_border = upper_border
         self.lower_border = lower_border
-        self.initial_step = initial_step  # not used
-        self.step = initial_step  # current step
-        self.gear_ratio = gear_ratio  # Characteristic of a motor
-        self.number_of_teeth = number_of_teeth  # teeth INSIDE the stepper motor \ characteristic of a motor
         self.config = config  # config object
-        self.config_file = config_file
         self.time_of_the_last_turn = -1
-        self.turret_angle = float(config['values']['turret angle']) if (config is not None) else None
-        self.number_of_teeth_stepper = number_of_teeth_stepper
-        self.number_of_teeth_turret = number_of_teeth_turret
 
     # Rotates stepper by a specified amount of steps
-    def rotate(self, steps, method=None, delay=0.001, turn_coefficient=1):
+    def rotate(self, steps, method=None, delay=0.001, turn_coefficient=1) -> bool:
         if method is None:
             method = self.fullstepping_power
         steps = round(steps * turn_coefficient)
@@ -86,7 +92,7 @@ class Stepper:
 
                 # Take borders into account, only upper border because here it is turning right
                 if self.upper_border is not None:
-                    # If stepper works as a turret, then check the turret angle  
+                    # If stepper works as a turret, then check the turret angle
                     if self.turret_angle is not None:
                         if new_turret_angle > self.upper_border:
                             print("Cannot go any further right due to the borders")
@@ -158,12 +164,11 @@ class Stepper:
 
         # Write down the values to config
         if self.config is not None:
-            self.config['values']['angle stepper'] = str(self.angle)
-            self.config['values']['step'] = str(self.step)
-            self.config['values']['turret angle'] = str(self.turret_angle)
+            self.config.ROBOT_DATA.angle_stepper = self.angle
+            self.config.ROBOT_DATA.step = self.step
+            self.config.ROBOT_DATA.turret_angle = self.turret_angle
 
-            with open(self.config_file, 'w') as cfg_file:
-                self.config.write(cfg_file)
+        return True
 
     # Turn stepper to a specified angle
     def turn_to(self, angle, delay=0.002, method=None):
@@ -221,30 +226,27 @@ class Stepper:
 
 if __name__ == "__main__":
     GPIO.setmode(GPIO.BOARD)
+    from config import Config
 
-    config = ConfigParser()
-    config.read('cfg.ini')
+    init_angle = Config.ROBOT_DATA.angle_stepper
+    init_step = Config.ROBOT_DATA.step
 
-    init_angle = float(config['values']['angle stepper'])
-    init_step = int(config['values']['step'])
-
-    stepper = Stepper(11, 13, 15, 16, initial_angle=init_angle, initial_step=init_step, config=config,
-                      config_file='cfg.ini')
+    stepper = Stepper(11, 13, 15, 16, initial_angle=init_angle, initial_step=init_step, config=Config)
 
     try:
         while 1:
             try:
                 inp = input('Enter angle: ')
-                mode, angle = inp.split()
+                mode, ang = inp.split()
             except ValueError:
                 mode = 'by'
-                angle = inp
-            angle = float(angle)
+                ang = inp
+            angle = float(ang)
 
             if mode == 'by':
-                stepper.turn_by(angle)
+                stepper.turn_by(ang)
             if mode == 'to':
-                stepper.turn_to(angle)
+                stepper.turn_to(ang)
 
             print(stepper.angle, stepper.step)
     except KeyboardInterrupt:
