@@ -46,8 +46,8 @@ class Robot:
             motor.stop()
 
     def move_turret(self, tilt, turn):
-        self.servo.rotate_by(tilt, turn_coefficient=10)
-        self.stepper.rotate(turn, turn_coefficient=100, delay=0.002)
+        self.servo.rotate_by(tilt, turn_coefficient=10, do_not_use_sleep=True)
+        self.stepper.rotate(turn, turn_coefficient=50, delay=0.002)
 
 
 if __name__ == "__main__":
