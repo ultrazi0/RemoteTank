@@ -44,11 +44,11 @@ class Stepper:
             GPIO.output(pin, 0)
 
         if config is not None:
-            self.angle = config.ROBOT_DATA.angle_stepper  # current angle on the motor
-            self.step = config.ROBOT_DATA.step  # current step
+            self.angle = config.VALUES.angle_stepper  # current angle on the motor
+            self.step = config.VALUES.step  # current step
             self.gear_ratio = config.CONSTANTS.gear_ratio  # Characteristic of a motor
             self.number_of_teeth = config.CONSTANTS.number_of_teeth  # teeth INSIDE the stepper motor
-            self.turret_angle = config.ROBOT_DATA.turret_angle
+            self.turret_angle = config.VALUES.turret_angle
             self.number_of_teeth_stepper = config.CONSTANTS.number_of_teeth_stepper
             self.number_of_teeth_turret = config.CONSTANTS.number_of_teeth_turret
         else:
@@ -62,7 +62,7 @@ class Stepper:
 
         self.upper_border = upper_border
         self.lower_border = lower_border
-        self.config = config  # config object
+        self.config = config  # config class
         self.time_of_the_last_turn = -1
 
     # Rotates stepper by a specified amount of steps
@@ -164,9 +164,11 @@ class Stepper:
 
         # Write down the values to config
         if self.config is not None:
-            self.config.ROBOT_DATA.angle_stepper = self.angle
-            self.config.ROBOT_DATA.step = self.step
-            self.config.ROBOT_DATA.turret_angle = self.turret_angle
+            self.config.VALUES.angle_stepper = self.angle
+            self.config.VALUES.step = self.step
+            self.config.VALUES.turret_angle = self.turret_angle
+
+            self.config.VALUES.save_to_config()
 
         return True
 
@@ -228,8 +230,8 @@ if __name__ == "__main__":
     GPIO.setmode(GPIO.BOARD)
     from config import Config
 
-    init_angle = Config.ROBOT_DATA.angle_stepper
-    init_step = Config.ROBOT_DATA.step
+    init_angle = Config.VALUES.angle_stepper
+    init_step = Config.VALUES.step
 
     stepper = Stepper(11, 13, 15, 16, initial_angle=init_angle, initial_step=init_step, config=Config)
 
