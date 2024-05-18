@@ -61,6 +61,7 @@ if __name__ == "__main__":
     capture = Process(target=robot.cam.capture)
     send = Process(target=robot.ws_image.read_from_memory_and_send_windows)
     listen = Process(target=robot.ws_command.receive_commands_windows)
+    send_feedback = Process(target=robot.ws_feedback.connect_and_forward)
 
     GPIO.setmode(GPIO.BOARD)
 
@@ -88,6 +89,7 @@ if __name__ == "__main__":
         capture.start()
         send.start()
         listen.start()
+        send_feedback.start()
 
         while 1:
             message = robot.ws_command.receiver.recv()
@@ -104,6 +106,7 @@ if __name__ == "__main__":
     finally:
         robot.ws_image.closed.set()
         robot.ws_command.closed.set()
+        robot.ws_feedback.closed.set()
         robot.cam.image_memory.unlink()
 
         print("Main>>> THE END")
