@@ -69,10 +69,12 @@ class Motor_PWM:
         # Activate the motor
         if speed > 0:
             self.pwmA.ChangeDutyCycle(abs(speed))
-            self.pwmB.ChangeDutyCycle(0)
-        elif speed <= 0:
+        elif speed < 0:
             self.pwmB.ChangeDutyCycle(abs(speed))
+        else:
+            # speed = 0
             self.pwmA.ChangeDutyCycle(0)
+            self.pwmB.ChangeDutyCycle(0)
 
         # Sleeping
         if time:

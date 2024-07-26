@@ -50,4 +50,4 @@ class ImageWebsocket(Websocket):
         """ Converts image (numpy.ndarray) to json string """
         success, imdata = cv.imencode('.JPG', img)
 
-        return json.dumps({"image": b64encode(imdata.tobytes()).decode('ascii')})
+        return json.dumps({"messageType": "image","image": b64encode(imdata.tobytes()).decode('ascii')})
