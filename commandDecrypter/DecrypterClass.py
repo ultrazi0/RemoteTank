@@ -1,16 +1,28 @@
 class CommandDecrypter:
-    def __init__(self, command_dict: dict, function_name_key: str = "command", values_key: str = "values"):
+    def __init__(self, command_dict: dict, message_type_key: str = "messageType", function_name_key: str = "command", values_key: str = "values"):
         self.command_dict = command_dict
+        self.message_type_key = message_type_key
         self.function_name_key = function_name_key
         self.values_key = values_key
 
-    def decrypt(self, json_messages: list) -> tuple:
+    def decrypt(self, json_messages: list):
         for json_message in json_messages:
+            message_is_a_command = False
             func = None
             kwargs = {}
 
             for key, value in json_message.items():
-                if key == self.function_name_key:
+                if key == self.message_type_key:
+                    # value is a stiring with message type
+                    if value == self.function_name_key:
+                        # message is a command
+                        message_is_a_command = True
+
+                elif key == self.function_name_key:
+                    if not message_is_a_command:
+                        print(f"CommandDecrypter>>> Recieved message with a command field, but not of \"command\" type. Message will not be parsed further")
+                        break
+
                     # value is a string
                     if value not in self.command_dict.keys():
                         print(f"CommandDecrypter>>> No command with name \"{value}\"")
@@ -20,8 +32,13 @@ class CommandDecrypter:
                 elif key == self.values_key:
                     # value is a dictionary
                     kwargs = value
+                elif key == "message":
+                    # value is a message
+                    print(f"CommandDecrypter>>> Receided message: \"{value}\"")
 
-            yield func, kwargs
+            if (not message_is_a_command) or (not func):
+                continue
+            yield (func, kwargs)
 
     def decrypt_and_execute(self, json_messages: list) -> list:
         results = []
