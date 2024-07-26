@@ -1,0 +1,6 @@
+/venv/
+/__pycache__/
+/camera/__pycache__/
+/motors/__pycache__/
+/sock/__pycache__/
+/commandDecrypter/__pycache__/
