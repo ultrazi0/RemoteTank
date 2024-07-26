@@ -23,7 +23,8 @@ class Camera:
         self.closed = Event()
 
     def capture_and_show(self):
-        self.cap = cv.VideoCapture(self.camera_id, cv.CAP_DSHOW)  # CAP_DSHOW works only for windows - on linux causes problems
+        # CAP_DSHOW works only for windows - on linux causes problems
+        self.cap = cv.VideoCapture(self.camera_id, cv.CAP_DSHOW)
         self.cap.set(3, self.width)
         self.cap.set(4, self.height)
 
